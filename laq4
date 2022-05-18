@@ -1,94 +1,90 @@
 function Decoder(bytes, port) {
-    
-//var mode=31;
-// Leon testing the decoder
-var mode=(bytes[2] & 0x7C)>>2;
-var decoded = [];
-
- decoded.push({
-                "field": "BATV",
-                "value":(bytes[0]<<8 | bytes[1])/1000
-            }); 
+  var mode=(bytes[2] & 0x7C)>>2;
+  Bat_V=(bytes[0]<<8 | bytes[1])/1000; 
   if(mode==1)
   {
-       decoded.push({
-                "field":"Work_mode",
-                "value":"CO2"
-            });  
-       decoded.push({
-                "field":"Alarm_status",
-                "value":(bytes[2] & 0x01)? "TRUE":"FALSE"
-            });      
-       decoded.push({
-                "field":"TVOC_ppb",
-                "value":bytes[3]<<8 | bytes[4]
-            });      
-        decoded.push({
-                "field":"CO2_ppm",
-                "value":bytes[5]<<8 | bytes[6]
-            });       
-        decoded.push({
-                "field":"TempC_SHT",
-                "value":parseFloat(((bytes[7]<<24>>16 | bytes[8])/10).toFixed(2))
-            });  
-       decoded.push({
-                "field":"Hum_SHT",
-                "value":parseFloat(((bytes[9]<<8 | bytes[10])/10).toFixed(1))
-            });  
+    Work_mode="CO2";
+    Alarm_status=(bytes[2] & 0x01)? "TRUE":"FALSE"; 
+    TVOC_ppb= bytes[3]<<8 | bytes[4]; 
+    CO2_ppm= bytes[5]<<8 | bytes[6];
+    TempC_SHT=parseFloat(((bytes[7]<<24>>16 | bytes[8])/10).toFixed(2));
+    Hum_SHT=parseFloat(((bytes[9]<<8 | bytes[10])/10).toFixed(1)); 
+    datacakeFields = [
+        {
+            field: "BATTERY",
+            value: Bat_V,
+        },
+        {
+            field: "WORK_MODE",
+            value: Work_mode,
+        },
+        {
+            field: "TVOC_PPB",
+            value: TVOC_ppb,
+        },
+        {
+            field: "CO2_PPM",
+            value: CO2_ppm,
+        },
+        {
+            field: "TEMPERATURE",
+            value: TempC_SHT,
+        },
+        {
+            field: "HUMIDITY",
+            value: Hum_SHT,
+        },
+    ];        
   }
   else if(mode==31)
   {
-     decoded.push({
-                "field": "Work_mode",
-                "value":"ALARM"
-            }); 
-     decoded.push({
-                "field": "SHTEMPMIN",
-                "value":bytes[3]<<24>>24
-            });        
-      decoded.push({
-                "field": "SHTEMPMAX",
-                "value":bytes[4]<<24>>24
-            }); 
-       decoded.push({
-                "field": "SHTHUMMIN",
-                "value":bytes[5]
-            });      
-     decoded.push({
-                "field": "SHTHUMMAX",
-                "value":bytes[6]
-            });  
-    decoded.push({
-                "field": "CO2MIN",
-                "value":bytes[7]<<8 | bytes[8]
-            });  
-   decoded.push({
-                "field": "CO2MAX",
-                "value":bytes[9]<<8 | bytes[10]
-            });
+    Work_mode="ALARM";
+    SHTEMPMIN= bytes[3]<<24>>24;
+    SHTEMPMAX= bytes[4]<<24>>24;   
+    SHTHUMMIN= bytes[5];
+    SHTHUMMAX= bytes[6]; 
+    CO2MIN= bytes[7]<<8 | bytes[8]; 
+    CO2MAX= bytes[9]<<8 | bytes[10];
+    datacakeFields = [
+
+        {
+            field: "SHTEMPMIN",
+            value: SHTEMPMIN,
+        },
+        {
+            field: "SHTEMPMAX",
+            value: SHTEMPMAX,
+        },
+        {
+            field: "SHTHUMMIN",
+            value: SHTHUMMIN,
+        },
+        {
+            field: "SHTHUMMAX",
+            value: SHTHUMMAX,
+        },
+        {
+            field: "CO2MIN",
+            value: CO2MIN,
+        },
+        {
+            field: "CO2MAX",
+            value: CO2MAX,
+        },
+    ];    
+    
   }
-    return decoded;
-
-
-}
-
-
-decoded.push({
-                "field": "CO2MIN",
-                "value":bytes[7]<<8 | bytes[8]
-            });  
-   decoded.push({
-                "field": "CO2MAX",
-                "value":bytes[9]<<8 | bytes[10]
-            });
-            
-            if (normalizedPayload.data_rate && normalizedPayload.gateways && normalizedPayload.gateways[0])  {
-        decoded.push({field:"LORA_SNR", value:normalizedPayload.gateways[0].snr});
-        decoded.push({field:"LORA_RSSI", value:normalizedPayload.gateways[0].rssi});
-        decoded.push({field:"LORA_RSSI", value:normalizedPayload.data_rate});
+  
+    if (normalizedPayload.data_rate && normalizedPayload.gateways && normalizedPayload.gateways[0])  {
+        datacakeFields.push({field:"LORA_SNR", value:normalizedPayload.gateways[0].snr});
+        datacakeFields.push({field:"LORA_RSSI", value:normalizedPayload.gateways[0].rssi});
+        datacakeFields.push({field:"DATA_RATE", value:normalizedPayload.data_rate});
     } else {
         console.log("No Gateway Metadata found - Skipping")
     }
+  
+  if(bytes.length==11)
+  {
+    return datacakeFields;
   }
-    return decoded;
 }

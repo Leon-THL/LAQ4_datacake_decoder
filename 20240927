@@ -1,0 +1,107 @@
+// Global variables to store previous temperature readings
+var currentTemp = null;
+var previousTemp1 = null;
+var previousTemp2 = null;
+var lastUpdated = null;  // Variable to store the local time of the last payload
+
+// Function to decode the bytes
+function Decoder(bytes, port) {
+  console.log("Decoder called with bytes: ", bytes);
+  var mode = (bytes[2] & 0x7C) >> 2;
+  var decode = {};
+  decode.BATTERY = (bytes[0] << 8 | bytes[1]) / 1000; 
+
+  console.log("Decoding mode: ", mode);
+  
+  if (mode === 1) {
+    decode.Work_mode = "CO2";
+    decode.Alarm_status = (bytes[2] & 0x01) ? "TRUE" : "FALSE"; 
+    decode.TVOC_ppb = bytes[3] << 8 | bytes[4]; 
+    decode.CO2_ppm = bytes[5] << 8 | bytes[6];
+    decode.TempC_SHT = parseFloat(((bytes[7] << 24 >> 16 | bytes[8]) / 10).toFixed(2));
+    
+    console.log("Decoded Temperature: ", decode.TempC_SHT);
+    
+    if (decode.TempC_SHT > 25) {
+      decode.TEMPC_HIGH = 1;
+    } else {
+      decode.TEMPC_HIGH = 0;
+    }
+    
+    decode.Hum_SHT = parseFloat(((bytes[9] << 8 | bytes[10]) / 10).toFixed(1));  
+    
+    // Update previous temperature readings
+    updatePreviousTemperatures(decode.TempC_SHT);
+    
+    // Update the last updated time and add 2 hours
+    var currentTime = new Date();
+    currentTime.setHours(currentTime.getHours() + 2);
+    lastUpdated = currentTime.toLocaleString();
+    
+    // Include current and previous temperatures and the last updated time in the decode object
+    decode.currentTemp = currentTemp;
+    decode.previousTemp1 = previousTemp1;
+    decode.previousTemp2 = previousTemp2;
+    decode.lastUpdated = lastUpdated;
+    
+    console.log("Decoded Object: ", decode);
+  } else if (mode === 31) {
+    decode.Work_mode = "ALARM";
+    decode.SHTEMPMIN = bytes[3] << 24 >> 24;
+    decode.SHTEMPMAX = bytes[4] << 24 >> 24;   
+    decode.SHTHUMMIN = bytes[5];
+    decode.SHTHUMMAX = bytes[6]; 
+    decode.CO2MIN = bytes[7] << 8 | bytes[8]; 
+    decode.CO2MAX = bytes[9] << 8 | bytes[10]; 
+  }
+  
+  if (bytes.length === 11) {
+    console.log("Returning decode object: ", decode);
+    return decode;
+  }
+}
+
+// Function to update previous temperatures
+function updatePreviousTemperatures(newTemp) {
+  console.log("Updating temperatures");
+  console.log("PreviousTemp2 before: ", previousTemp2);
+  console.log("PreviousTemp1 before: ", previousTemp1);
+  console.log("CurrentTemp before: ", currentTemp);
+
+  // Shift currentTemp to previousTemp1, and previousTemp1 to previousTemp2
+  previousTemp2 = previousTemp1;
+  previousTemp1 = currentTemp;
+  // Update currentTemp with the new temperature
+  currentTemp = newTemp;
+
+  console.log("PreviousTemp2 after: ", previousTemp2);
+  console.log("PreviousTemp1 after: ", previousTemp1);
+  console.log("CurrentTemp after: ", currentTemp);
+}
+
+// Convert the payload to a byte array
+function hexStringToByteArray(hex) {
+  var result = [];
+  for (var i = 0; i < hex.length; i += 2) {
+    result.push(parseInt(hex.substr(i, 2), 16));
+  }
+  return result;
+}
+
+// Simulate calling the Decoder function with different temperature values to observe the updates
+function testDecoder() {
+  console.log("Test 1: Decoding first payload with temperature 8.1");
+  Decoder(hexStringToByteArray("0ce9040060040b001401f3"), 1);  // Example payload 1 (8.1 C)
+  console.log("Global State after Test 1:", currentTemp, previousTemp1, previousTemp2);
+
+  console.log("Test 2: Decoding second payload with temperature 9.2");
+  Decoder(hexStringToByteArray("0ce9040060040b001702f3"), 1);  // Example payload 2 (9.2 C)
+  console.log("Global State after Test 2:", currentTemp, previousTemp1, previousTemp2);
+
+  console.log("Test 3: Decoding third payload with temperature 10.3");
+  Decoder(hexStringToByteArray("0ce9040060040b001a03f3"), 1);  // Example payload 3 (10.3 C)
+  console.log("Global State after Test 3:", currentTemp, previousTemp1, previousTemp2);
+}
+
+// Run the test
+testDecoder();
